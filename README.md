@@ -62,6 +62,8 @@ poetry run ruff check .
 poetry run mypy backend/app ml
 ```
 
+> **Docker Desktop on macOS:** `brew install --cask docker` links a helper binary via `sudo`, which requires an interactive password prompt — run it yourself in a real terminal, then launch `Docker.app` once to finish setup. Until Docker is available, Postgres/Redis can run locally instead: `brew install postgresql@16 redis && brew services start postgresql@16 redis`, then create a dedicated role/database (`CREATE ROLE retention_app LOGIN PASSWORD '...'; CREATE DATABASE retention_platform OWNER retention_app;`) and point `.env` at it. Note: the Homebrew `redis` formula 8.x ships a `redis.conf` with broken relative `loadmodule` paths (Redis Stack modules that aren't actually bundled) — comment out the `loadmodule ./modules/...` lines under `/opt/homebrew/etc/redis.conf` if the service fails to start.
+
 Optional dependency groups are installed on demand as later modules need them, e.g.:
 
 ```bash
