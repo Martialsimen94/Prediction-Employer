@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Poetry
+poetry.lock.bak
+
+# Node / frontend
+node_modules/
+dist/
+.pnpm-store/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# MLflow / ML artifacts
+mlruns/
+mlartifacts/
+ml/data/raw/
+ml/data/processed/
+*.pkl
+*.joblib
+*.h5
+
+# Databases
+*.db
+*.sqlite3
+pgdata/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Alembic
+backend/alembic/versions/__pycache__/
+
+# Logs
+*.log
+logs/
