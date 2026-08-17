@@ -94,7 +94,7 @@ The platform is built and tested module by module (see the project plan for full
 
 - [x] **1. Foundations** — monorepo structure, Poetry, pnpm, pre-commit, Docker Compose skeleton, CI skeleton
 - [x] **2. Database schema & Alembic migrations** — 21 normalized tables, constraints/indexes, `db/sql` views/triggers/stored function
-- [ ] 3. Authentication & RBAC
+- [x] **3. Authentication & RBAC** — Argon2 + JWT access/refresh tokens, permission-based authorization, 5 seeded roles
 - [ ] 4. Core HR domain API (employees, departments, managers, salaries, reviews, promotions, absences, training)
 - [ ] 5. Notifications & audit log
 - [ ] 6. Data engineering — dataset generation & ETL pipeline
