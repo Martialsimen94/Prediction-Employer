@@ -72,12 +72,28 @@ poetry install --with ml       # pandas, XGBoost, SHAP, MLflow...
 poetry install --with dashboards
 ```
 
+## Database
+
+The schema (21 tables — employees, departments, salaries, performance reviews,
+promotions, absences, trainings, skills, auth/RBAC, ML predictions/recommendations,
+notifications, audit log, MLOps model registry & drift reports) is fully normalized,
+constrained (CHECK/UNIQUE/FK with appropriate `ON DELETE` behavior) and indexed.
+Reporting views, audit/`updated_at` triggers and a turnover-rate stored function live
+in [`db/sql`](db/sql) and are applied by the second Alembic migration.
+
+```bash
+cd backend
+poetry run alembic upgrade head      # apply all migrations
+poetry run alembic downgrade base    # roll back everything (dev/test only)
+poetry run alembic revision --autogenerate -m "..."   # after changing models
+```
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
 
 - [x] **1. Foundations** — monorepo structure, Poetry, pnpm, pre-commit, Docker Compose skeleton, CI skeleton
-- [ ] 2. Database schema & Alembic migrations
+- [x] **2. Database schema & Alembic migrations** — 21 normalized tables, constraints/indexes, `db/sql` views/triggers/stored function
 - [ ] 3. Authentication & RBAC
 - [ ] 4. Core HR domain API (employees, departments, managers, salaries, reviews, promotions, absences, training)
 - [ ] 5. Notifications & audit log

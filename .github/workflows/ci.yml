@@ -10,6 +10,24 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: retention_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_DSN: postgresql+psycopg://postgres:postgres@localhost:5432/retention_platform
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,6 +61,10 @@ jobs:
 
       - name: Type check (mypy)
         run: poetry run mypy backend/app ml
+
+      - name: Apply database migrations
+        working-directory: backend
+        run: poetry run alembic upgrade head
 
       - name: Run tests
         run: poetry run pytest

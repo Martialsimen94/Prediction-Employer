@@ -75,6 +75,7 @@ build-backend = "poetry.core.masonry.api"
 line-length = 100
 target-version = "py312"
 src = ["backend/app", "ml"]
+extend-exclude = ["backend/alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "N"]
@@ -87,7 +88,7 @@ known-first-party = ["app"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = ["tests", "ml/notebooks"]
+exclude = ["tests", "ml/notebooks", "backend/alembic/versions"]
 
 [[tool.mypy.overrides]]
 module = ["shap.*", "lime.*", "catboost.*", "lightgbm.*", "mlflow.*", "optuna.*"]
