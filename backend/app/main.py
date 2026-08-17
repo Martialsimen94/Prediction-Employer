@@ -7,10 +7,20 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.absences import router as absences_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.departments import router as departments_router
+from app.api.v1.employees import router as employees_router
+from app.api.v1.performance_reviews import router as performance_reviews_router
+from app.api.v1.promotions import router as promotions_router
+from app.api.v1.salaries import router as salaries_router
+from app.api.v1.trainings import catalog_router as trainings_catalog_router
+from app.api.v1.trainings import enrollment_router as trainings_enrollment_router
 from app.core.config import get_settings
 from app.core.db import engine
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.limiter import limiter
 from app.core.redis import get_redis_client
 from app.schemas.health import HealthStatus
@@ -33,6 +43,33 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(NotFoundError)
+async def not_found_handler(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_handler(request: Request, exc: ConflictError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+async def validation_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": str(exc)}
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    """Fallback for constraint violations not pre-validated by a service
+    (e.g. a race on a unique constraint)."""
+    logger.warning("integrity_error", path=request.url.path, error=str(exc.orig))
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT, content={"detail": "Conflicting or invalid data"}
+    )
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Centralized fallback: log the real error, never leak internals to the client."""
@@ -44,6 +81,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
+app.include_router(departments_router, prefix=settings.api_v1_prefix)
+app.include_router(employees_router, prefix=settings.api_v1_prefix)
+app.include_router(salaries_router, prefix=settings.api_v1_prefix)
+app.include_router(performance_reviews_router, prefix=settings.api_v1_prefix)
+app.include_router(promotions_router, prefix=settings.api_v1_prefix)
+app.include_router(absences_router, prefix=settings.api_v1_prefix)
+app.include_router(trainings_catalog_router, prefix=settings.api_v1_prefix)
+app.include_router(trainings_enrollment_router, prefix=settings.api_v1_prefix)
 
 
 def _database_is_reachable() -> bool:
