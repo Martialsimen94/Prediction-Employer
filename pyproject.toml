@@ -38,6 +38,7 @@ argon2-cffi = "^23.1"
 celery = { version = "^5.4", extras = ["redis"] }
 redis = "^5.2"
 slowapi = "^0.1.9"
+email-validator = "^2.3.0"
 
 [tool.poetry.group.ml]
 optional = true
@@ -91,7 +92,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["tests", "ml/notebooks", "backend/alembic/versions"]
 
 [[tool.mypy.overrides]]
-module = ["shap.*", "lime.*", "catboost.*", "lightgbm.*", "mlflow.*", "optuna.*"]
+module = ["shap.*", "lime.*", "catboost.*", "lightgbm.*", "mlflow.*", "optuna.*", "jose.*", "slowapi.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
