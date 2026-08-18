@@ -96,7 +96,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **2. Database schema & Alembic migrations** — 21 normalized tables, constraints/indexes, `db/sql` views/triggers/stored function
 - [x] **3. Authentication & RBAC** — Argon2 + JWT access/refresh tokens, permission-based authorization, 5 seeded roles
 - [x] **4. Core HR domain API** — departments, employees, salaries, performance reviews, promotions, absences, trainings; Repository + Service Layer, pagination/search, centralized error handling
-- [ ] 5. Notifications & audit log
+- [x] **5. Notifications & audit log** — Celery-backed async notification delivery, promotion-triggered notifications, read-only audit log API
 - [ ] 6. Data engineering — dataset generation & ETL pipeline
 - [ ] 7. ML training, benchmarking & MLflow tracking
 - [ ] 8. Explainability (SHAP/LIME) & recommendation engine
