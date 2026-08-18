@@ -21,6 +21,7 @@ repos:
             structlog>=24.4,
             python-jose>=3.3,
             slowapi>=0.1.9,
+            celery>=5.4,
           ]
         args: [--config-file=pyproject.toml]
         files: ^(backend/app|ml)/

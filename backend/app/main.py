@@ -10,9 +10,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.absences import router as absences_router
+from app.api.v1.audit import router as audit_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.departments import router as departments_router
 from app.api.v1.employees import router as employees_router
+from app.api.v1.notifications import router as notifications_router
 from app.api.v1.performance_reviews import router as performance_reviews_router
 from app.api.v1.promotions import router as promotions_router
 from app.api.v1.salaries import router as salaries_router
@@ -89,6 +91,8 @@ app.include_router(promotions_router, prefix=settings.api_v1_prefix)
 app.include_router(absences_router, prefix=settings.api_v1_prefix)
 app.include_router(trainings_catalog_router, prefix=settings.api_v1_prefix)
 app.include_router(trainings_enrollment_router, prefix=settings.api_v1_prefix)
+app.include_router(notifications_router, prefix=settings.api_v1_prefix)
+app.include_router(audit_router, prefix=settings.api_v1_prefix)
 
 
 def _database_is_reachable() -> bool:

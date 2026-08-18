@@ -92,7 +92,17 @@ plugins = ["pydantic.mypy"]
 exclude = ["tests", "ml/notebooks", "backend/alembic/versions"]
 
 [[tool.mypy.overrides]]
-module = ["shap.*", "lime.*", "catboost.*", "lightgbm.*", "mlflow.*", "optuna.*", "jose.*", "slowapi.*"]
+module = [
+  "shap.*",
+  "lime.*",
+  "catboost.*",
+  "lightgbm.*",
+  "mlflow.*",
+  "optuna.*",
+  "jose.*",
+  "slowapi.*",
+  "celery.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
