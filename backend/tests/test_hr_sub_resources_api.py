@@ -2,6 +2,7 @@
 training endpoints — all nested under an employee (except the training
 catalog itself)."""
 
+import uuid
 from collections.abc import Generator
 
 import pytest
@@ -202,9 +203,13 @@ def test_absence_end_before_start_is_rejected(
 
 
 def test_training_catalog_crud(client: TestClient, hr_headers: dict[str, str]) -> None:
+    # A name unlikely to collide with the fixed course catalog the ETL
+    # pipeline (Module 6) may have already seeded into the dev database.
+    unique_name = f"Advanced SQL Tuning {uuid.uuid4().hex[:8]}"
+
     created = client.post(
         "/api/v1/trainings",
-        json={"name": "Advanced SQL", "provider": "Internal", "duration_hours": 8},
+        json={"name": unique_name, "provider": "Internal", "duration_hours": 8},
         headers=hr_headers,
     )
     assert created.status_code == 201
@@ -212,12 +217,12 @@ def test_training_catalog_crud(client: TestClient, hr_headers: dict[str, str]) -
 
     duplicate = client.post(
         "/api/v1/trainings",
-        json={"name": "Advanced SQL", "duration_hours": 4},
+        json={"name": unique_name, "duration_hours": 4},
         headers=hr_headers,
     )
     assert duplicate.status_code == 409
 
-    listed = client.get("/api/v1/trainings?search=SQL", headers=hr_headers)
+    listed = client.get(f"/api/v1/trainings?search={unique_name}", headers=hr_headers)
     assert listed.json()["total"] == 1
 
     updated = client.patch(

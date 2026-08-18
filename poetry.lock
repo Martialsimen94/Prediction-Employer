@@ -2719,14 +2719,14 @@ xethub = ["mlflow-xethub"]
 
 [[package]]
 name = "multimethod"
-version = "2.1"
+version = "1.12"
 description = "Multiple argument dispatching."
 optional = false
-python-versions = ">=3.11"
+python-versions = ">=3.9"
 groups = ["ml"]
 files = [
-    {file = "multimethod-2.1-py3-none-any.whl", hash = "sha256:54b5256562351762a275dd65571b5d6db750848f1eb6bb21c61cb5ff2748b663"},
-    {file = "multimethod-2.1.tar.gz", hash = "sha256:c59e75fbe51516ed632d3df4b56df0876747be001c068d3ee1e83e9f65c2846f"},
+    {file = "multimethod-1.12-py3-none-any.whl", hash = "sha256:fd0c473c43558908d97cc06e4d68e8f69202f167db46f7b4e4058893e7dbdf60"},
+    {file = "multimethod-1.12.tar.gz", hash = "sha256:8db8ef2a8d2a247e3570cc23317680892fdf903d84c8c1053667c8e8f7671a67"},
 ]
 
 [[package]]
@@ -5785,4 +5785,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "2afb04c7227da17cf52bc16a6fb3eed8aa58939c301b84dda8b015761b8f95c6"
+content-hash = "95120a2a1bf53c0cac3f1cdc5e6deed68a229a44a053f6d50d5f06bb48f8fb5c"

@@ -22,6 +22,8 @@ repos:
             python-jose>=3.3,
             slowapi>=0.1.9,
             celery>=5.4,
+            pytest>=8.3,
+            numpy>=2.1,
           ]
         args: [--config-file=pyproject.toml]
         files: ^(backend/app|ml)/

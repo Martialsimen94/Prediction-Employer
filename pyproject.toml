@@ -57,6 +57,7 @@ mlflow = "^2.18"
 imbalanced-learn = "^0.13"
 openpyxl = "^3.1"
 pandera = "^0.21"
+multimethod = "<2.0"
 
 [tool.poetry.group.dashboards]
 optional = true
@@ -89,6 +90,7 @@ known-first-party = ["app"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+mypy_path = ["backend", "ml"]
 exclude = ["tests", "ml/notebooks", "backend/alembic/versions"]
 
 [[tool.mypy.overrides]]
@@ -102,7 +104,20 @@ module = [
   "jose.*",
   "slowapi.*",
   "celery.*",
+  "pandas.*",
+  "sklearn.*",
+  "faker.*",
+  "pandera.*",
 ]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Test modules are intentionally excluded from strict checking (see `exclude`
+# above); this also covers them when reached indirectly via import-following
+# rather than as a direct mypy argument (e.g. ml/tests importing fixtures
+# from backend/tests/conftest.py).
+module = ["tests.*", "ml.tests.*"]
+ignore_errors = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

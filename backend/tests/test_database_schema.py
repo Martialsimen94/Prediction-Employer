@@ -159,7 +159,7 @@ def test_salary_changes_are_audited(db_session: Session) -> None:
 
 
 def test_department_turnover_rate_function(db_session: Session) -> None:
-    department = _make_department(db_session, "Sales")
+    department = _make_department(db_session, "Turnover Test Department")
     employee = _make_employee(
         db_session, department, email="turnover@example.com", employee_number="E-TURN"
     )

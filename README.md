@@ -88,6 +88,37 @@ poetry run alembic downgrade base    # roll back everything (dev/test only)
 poetry run alembic revision --autogenerate -m "..."   # after changing models
 ```
 
+## Data & ETL
+
+The seed dataset is the public [IBM HR Analytics Employee Attrition &
+Performance](https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset)
+dataset (1,470 real fictional-but-realistic employees, 35 features) — not committed to
+the repo (`ml/data/raw/` is gitignored; a sha256 checksum guards the fetch):
+
+```bash
+poetry run python ml/etl/download_seed_dataset.py
+```
+
+The ETL pipeline (`ml/etl/`) validates it with Pandera, cleans it (missing
+values, IQR outlier flagging), bootstrap+jitter-augments it up to an
+"enterprise" row count while preserving the real data's joint statistics
+(a resampled real row, not independently resampled columns — correlations
+like OverTime+low JobSatisfaction -> Attrition survive), maps it onto our
+domain tables (with a JobLevel-based manager hierarchy per department),
+synthesizes plausible absences/training enrollments the source data doesn't
+contain, and bulk-loads everything into Postgres via SQLAlchemy Core
+(INSERT...RETURNING, not row-by-row ORM — ~5,000 employees plus ~20,000
+related rows load in about 2 seconds):
+
+```bash
+PYTHONPATH=backend poetry run python -m ml.etl.pipeline --target-rows 5000
+# --dry-run runs every stage except the DB load, to sanity-check counts/timing
+```
+
+A reusable sklearn `ColumnTransformer` (`ml/etl/features.py`, encoding +
+scaling) is shared with Module 7's training pipeline so both agree on
+exactly which columns feed the model.
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -97,7 +128,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **3. Authentication & RBAC** — Argon2 + JWT access/refresh tokens, permission-based authorization, 5 seeded roles
 - [x] **4. Core HR domain API** — departments, employees, salaries, performance reviews, promotions, absences, trainings; Repository + Service Layer, pagination/search, centralized error handling
 - [x] **5. Notifications & audit log** — Celery-backed async notification delivery, promotion-triggered notifications, read-only audit log API
-- [ ] 6. Data engineering — dataset generation & ETL pipeline
+- [x] **6. Data engineering — dataset generation & ETL pipeline** — real IBM HR Attrition seed data, Pandera validation, bootstrap+jitter synthetic augmentation, bulk load to Postgres
 - [ ] 7. ML training, benchmarking & MLflow tracking
 - [ ] 8. Explainability (SHAP/LIME) & recommendation engine
 - [ ] 9. ML inference API
