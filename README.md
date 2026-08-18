@@ -116,8 +116,36 @@ PYTHONPATH=backend poetry run python -m ml.etl.pipeline --target-rows 5000
 ```
 
 A reusable sklearn `ColumnTransformer` (`ml/etl/features.py`, encoding +
-scaling) is shared with Module 7's training pipeline so both agree on
+scaling) is shared with the training pipeline below so both agree on
 exactly which columns feed the model.
+
+## Machine Learning
+
+Six candidate models (Logistic Regression, Random Forest, XGBoost, LightGBM,
+CatBoost, a small MLP) are each Optuna-tuned, cross-validated, evaluated
+(accuracy/precision/recall/F1/ROC AUC, confusion matrix, calibration curve,
+learning curve, feature importance where applicable) and tracked in MLflow;
+the best one (by test ROC AUC) is registered in the MLflow Model Registry
+under a `staging` alias:
+
+```bash
+PYTHONPATH=backend poetry run python -m ml.training.train --target-rows 5000 --n-trials 12
+# --quick runs a small/fast version first, to sanity-check the whole pipeline
+poetry run mlflow ui --backend-store-uri sqlite:///mlruns.db   # browse runs
+```
+
+**A methodology note worth keeping in mind when extending this pipeline:**
+because synthetic rows are close relatives of the real row they were
+bootstrapped from (see [Data & ETL](#data--etl) above), a plain stratified
+train/test split let a row and its near-duplicate land on opposite sides of
+the split in early runs — inflating ROC AUC to ~0.99 by letting models
+partly recognize near-duplicates rather than learn the real pattern. Every
+synthetic row now carries a `lineage_id` back to the real employee it was
+resampled from, and both the train/test split and every cross-validation
+fold use `StratifiedGroupKFold` so a lineage never straddles a split. The
+corrected scores (~0.78-0.80 ROC AUC) line up with published benchmarks
+for this real dataset. See `ml/notebooks/01_eda_and_model_comparison.ipynb`
+for the full writeup, EDA, and model comparison charts.
 
 ## Roadmap
 
@@ -129,7 +157,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **4. Core HR domain API** — departments, employees, salaries, performance reviews, promotions, absences, trainings; Repository + Service Layer, pagination/search, centralized error handling
 - [x] **5. Notifications & audit log** — Celery-backed async notification delivery, promotion-triggered notifications, read-only audit log API
 - [x] **6. Data engineering — dataset generation & ETL pipeline** — real IBM HR Attrition seed data, Pandera validation, bootstrap+jitter synthetic augmentation, bulk load to Postgres
-- [ ] 7. ML training, benchmarking & MLflow tracking
+- [x] **7. ML training, benchmarking & MLflow tracking** — 6 models, Optuna tuning, leakage-safe grouped CV, full metric suite, MLflow tracking + model registry
 - [ ] 8. Explainability (SHAP/LIME) & recommendation engine
 - [ ] 9. ML inference API
 - [ ] 10. MLOps — drift detection & automated retraining

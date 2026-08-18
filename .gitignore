@@ -34,6 +34,7 @@ mlruns/
 mlartifacts/
 ml/data/raw/
 ml/data/processed/
+catboost_info/
 *.pkl
 *.joblib
 *.h5
