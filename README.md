@@ -147,6 +147,29 @@ corrected scores (~0.78-0.80 ROC AUC) line up with published benchmarks
 for this real dataset. See `ml/notebooks/01_eda_and_model_comparison.ipynb`
 for the full writeup, EDA, and model comparison charts.
 
+## Explainability
+
+Every prediction is paired with SHAP and LIME attributions and a short list
+of concrete recommendations, in `ml/explainability/`:
+
+- `ShapExplainer` — exact TreeExplainer attribution for the tree-ensemble
+  models (Random Forest, XGBoost, LightGBM, CatBoost), a model-agnostic
+  `shap.Explainer` fallback for Logistic Regression / the MLP; both are
+  computed in the pipeline's transformed feature space and aggregated back
+  onto the original employee columns.
+- `LimeExplainer` — a local linear surrogate fit around each instance, as an
+  independent cross-check against SHAP's Shapley-value attribution.
+- `recommendations.py` — maps the SHAP-driven risk factors to actionable HR
+  levers (salary review, training, promotion, internal mobility, coaching,
+  team change, workload reduction, mentoring), one recommendation per action
+  type, prioritized by risk level. `Gender`/`MaritalStatus` are deliberately
+  excluded from the actionable-feature map: an HR platform must never
+  justify an intervention by a protected/demographic attribute.
+- `ExplanationEngine` ties the three together into one
+  `PredictionExplanation` per employee, shaped to match the
+  `attrition_predictions` / `recommendations` tables so Module 9's inference
+  API can persist it directly.
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -158,7 +181,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **5. Notifications & audit log** — Celery-backed async notification delivery, promotion-triggered notifications, read-only audit log API
 - [x] **6. Data engineering — dataset generation & ETL pipeline** — real IBM HR Attrition seed data, Pandera validation, bootstrap+jitter synthetic augmentation, bulk load to Postgres
 - [x] **7. ML training, benchmarking & MLflow tracking** — 6 models, Optuna tuning, leakage-safe grouped CV, full metric suite, MLflow tracking + model registry
-- [ ] 8. Explainability (SHAP/LIME) & recommendation engine
+- [x] **8. Explainability (SHAP/LIME) & recommendation engine** — per-prediction SHAP + LIME attribution, actionable-feature-driven recommendations excluding protected attributes
 - [ ] 9. ML inference API
 - [ ] 10. MLOps — drift detection & automated retraining
 - [ ] 11. Dashboards (Streamlit/Dash)
