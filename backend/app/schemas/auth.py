@@ -28,3 +28,4 @@ class UserRead(BaseModel):
     email: str
     is_active: bool
     roles: list[str]
+    employee_id: int | None

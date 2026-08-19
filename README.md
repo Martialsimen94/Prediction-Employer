@@ -235,6 +235,36 @@ cd backend
 PYTHONPATH=..:. poetry run celery -A app.core.celery_app worker --beat --loglevel=info
 ```
 
+## Dashboards
+
+Two clients, four role-specific views, both reading and occasionally writing
+through the REST API above — never a direct database connection, so they're
+subject to the exact same RBAC as everyone else:
+
+- **`dashboards/streamlit_app/`** — HR and Manager. HR sees department
+  KPIs (headcount, turnover, avg salary/tenure), the company-wide attrition
+  risk distribution, and a filterable at-risk employee table. Manager sees
+  the same risk table scoped to their own direct reports (via the logged-in
+  user's `employee_id`, now returned by `GET /auth/me`).
+- **`dashboards/dash_app/`** — Executive and Data Scientist. Executive gets
+  company-wide KPIs and charts; Data Scientist gets recent drift reports, a
+  company-wide risk table, and a button that fires `POST /drift-reports/check`.
+
+A new `executive` role (read-only: `employees:read`, `salaries:read`,
+`predictions:read`, `audit:read`) was added in this module's migration —
+Module 3's seed never actually created one, despite the product description
+always naming it as a dashboard persona.
+
+`dashboards/common/` holds the shared REST client (login, token, `/auth/me`)
+and the chart color palette (categorical hues in fixed order; risk level
+mapped 1:1 onto a reserved good/warning/serious/critical status palette).
+
+```bash
+# backend must be running first (see ML Inference API above)
+PYTHONPATH=dashboards poetry run streamlit run dashboards/streamlit_app/app.py
+PYTHONPATH=dashboards poetry run python dashboards/dash_app/app.py
+```
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -249,7 +279,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **8. Explainability (SHAP/LIME) & recommendation engine** — per-prediction SHAP + LIME attribution, actionable-feature-driven recommendations excluding protected attributes
 - [x] **9. ML inference API** — MLflow-backed model loading synced to the model registry table, an offline-feature-store-driven prediction/recommendation REST API
 - [x] **10. MLOps — drift detection & automated retraining** — KS-test/PSI drift checks between feature-snapshot periods, threshold-triggered retraining with a beats-production promotion gate, nightly Celery Beat schedule
-- [ ] 11. Dashboards (Streamlit/Dash)
+- [x] **11. Dashboards (Streamlit/Dash)** — HR/Manager (Streamlit) and Executive/Data Scientist (Dash) views, reporting REST endpoints backed by Module 2's SQL views, a new `executive` role
 - [ ] 12. Frontend (React/TypeScript/Tailwind)
 - [ ] 13. Full Docker Compose stack & complete CI/CD
 - [ ] 14. Final documentation (architecture diagrams, technical & user guides)

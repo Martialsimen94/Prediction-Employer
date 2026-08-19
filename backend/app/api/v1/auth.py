@@ -22,7 +22,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _to_user_read(user: User) -> UserRead:
     return UserRead(
-        id=user.id, email=user.email, is_active=user.is_active, roles=[r.name for r in user.roles]
+        id=user.id,
+        email=user.email,
+        is_active=user.is_active,
+        roles=[r.name for r in user.roles],
+        employee_id=user.employee_id,
     )
 
 

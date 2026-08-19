@@ -23,6 +23,7 @@ from app.api.v1.predictions import (
     recommendations_router,
 )
 from app.api.v1.promotions import router as promotions_router
+from app.api.v1.reports import router as reports_router
 from app.api.v1.salaries import router as salaries_router
 from app.api.v1.trainings import catalog_router as trainings_catalog_router
 from app.api.v1.trainings import enrollment_router as trainings_enrollment_router
@@ -103,6 +104,7 @@ app.include_router(trainings_enrollment_router, prefix=settings.api_v1_prefix)
 app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 app.include_router(audit_router, prefix=settings.api_v1_prefix)
 app.include_router(drift_router, prefix=settings.api_v1_prefix)
+app.include_router(reports_router, prefix=settings.api_v1_prefix)
 
 
 def _database_is_reachable() -> bool:
