@@ -22,9 +22,9 @@ HR teams typically learn an employee is at flight risk only after they resign. T
 | Machine Learning | scikit-learn, XGBoost, LightGBM, CatBoost, Optuna, SHAP, LIME |
 | MLOps | MLflow (tracking + model registry), drift monitoring, automated retraining |
 | Visualization | Plotly, Dash, Streamlit |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query |
 | Infra | Docker, Docker Compose, GitHub Actions |
-| Testing | pytest, pytest-cov, httpx |
+| Testing | pytest, pytest-cov, httpx, Vitest, Testing Library |
 
 ## Architecture
 
@@ -71,6 +71,8 @@ poetry install --with api      # FastAPI, Celery, auth
 poetry install --with ml       # pandas, XGBoost, SHAP, MLflow...
 poetry install --with dashboards
 ```
+
+The frontend is a separate pnpm workspace (see [Frontend](#frontend) below) — `pnpm install` from the repo root sets it up.
 
 ## Database
 
@@ -265,6 +267,35 @@ PYTHONPATH=dashboards poetry run streamlit run dashboards/streamlit_app/app.py
 PYTHONPATH=dashboards poetry run python dashboards/dash_app/app.py
 ```
 
+## Frontend
+
+`frontend/` is the general-purpose HR/employee-portal SPA (React 19 +
+TypeScript + Vite + Tailwind CSS v4), the day-to-day CRUD complement to the
+analytics-focused dashboards above — same idea, different job: browse and
+edit employees/departments, work salary/promotion history, review
+per-employee attrition predictions and act on recommendations, read
+notifications. Every request goes through the same REST API as everything
+else in this repo; nothing here talks to Postgres directly.
+
+- **`src/api/`** — a small typed `fetch` wrapper (`client.ts`) plus
+  TanStack Query hooks (`queries.ts`) for every resource the UI touches.
+- **`src/auth/`** — `AuthProvider` (JWT in `localStorage`, `/auth/me`
+  rehydration on load) and a `permissions.ts` mirror of the seeded
+  role/permission table, used to decide what to render — the API remains
+  the actual enforcement point regardless of what the UI shows.
+- **`src/pages/`** — Employees (search/filter/paginate, create, an
+  inline-editable 360 profile with Salary/Promotions/Predictions tabs),
+  Departments (CRUD), Notifications.
+
+```bash
+cd frontend
+cp .env.example .env    # point VITE_API_BASE_URL at the running backend
+pnpm install
+pnpm dev                # http://localhost:5173
+pnpm test                # Vitest + Testing Library
+pnpm build               # tsc -b && vite build
+```
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -280,7 +311,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **9. ML inference API** — MLflow-backed model loading synced to the model registry table, an offline-feature-store-driven prediction/recommendation REST API
 - [x] **10. MLOps — drift detection & automated retraining** — KS-test/PSI drift checks between feature-snapshot periods, threshold-triggered retraining with a beats-production promotion gate, nightly Celery Beat schedule
 - [x] **11. Dashboards (Streamlit/Dash)** — HR/Manager (Streamlit) and Executive/Data Scientist (Dash) views, reporting REST endpoints backed by Module 2's SQL views, a new `executive` role
-- [ ] 12. Frontend (React/TypeScript/Tailwind)
+- [x] **12. Frontend (React/TypeScript/Tailwind)** — Employees/Departments/Notifications SPA consuming the REST API, JWT auth, role-gated UI, Vitest + Testing Library, oxlint/Prettier, a frontend CI job
 - [ ] 13. Full Docker Compose stack & complete CI/CD
 - [ ] 14. Final documentation (architecture diagrams, technical & user guides)
 

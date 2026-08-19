@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* Same palette as dashboards/common/colors.py (Module 11), so risk-level
+   colors and the primary brand hue stay consistent across every client. */
+@theme {
+  --color-brand-blue: #2a78d6;
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-serious: #ec835a;
+  --color-status-critical: #d03b3b;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none;
+  }
+}
