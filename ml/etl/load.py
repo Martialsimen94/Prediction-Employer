@@ -9,6 +9,7 @@ reviews / absences -> the training catalog -> employee training enrollments.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any, cast
 
 import pandas as pd
@@ -18,9 +19,11 @@ from sqlalchemy.orm import Session, decl_api
 from app.models.absence import Absence
 from app.models.department import Department
 from app.models.employee import Employee
+from app.models.ml import EmployeeFeatureSnapshot
 from app.models.performance_review import PerformanceReview
 from app.models.salary import Salary
 from app.models.training import EmployeeTraining, Training
+from ml.etl.features import FEATURE_COLUMNS
 from ml.etl.transform import TRAINING_CATALOG
 
 
@@ -161,6 +164,30 @@ def load_absences(
         for r in absence_records.itertuples(index=False)
     ]
     session.execute(insert(_table(Absence)), rows)
+
+
+def load_employee_feature_snapshots(
+    session: Session,
+    feature_records: pd.DataFrame,
+    employee_number_to_id: dict[int, int],
+    *,
+    computed_at: datetime,
+) -> None:
+    """One row per employee, populating the offline feature store Module 9's
+    inference API reads back to reconstruct exactly what the model was
+    trained on (see `ml.etl.transform.to_employee_feature_records`)."""
+    feature_dicts = feature_records[FEATURE_COLUMNS].to_dict("records")
+    rows = [
+        {
+            "employee_id": employee_number_to_id[int(source_number)],
+            "features": features,
+            "computed_at": computed_at,
+        }
+        for source_number, features in zip(
+            feature_records["source_employee_number"], feature_dicts, strict=True
+        )
+    ]
+    session.execute(insert(_table(EmployeeFeatureSnapshot)), rows)
 
 
 def load_training_catalog(session: Session) -> list[int]:

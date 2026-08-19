@@ -11,6 +11,7 @@ timings/row counts without touching Postgres).
 
 import argparse
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -69,6 +70,8 @@ def run(
     enrollment_records = transform_stage.to_employee_training_records(
         employee_records, random_state=RANDOM_STATE
     )
+    feature_records = transform_stage.to_employee_feature_records(augmented_df, employee_records)
+    computed_at = datetime.now(UTC)
 
     counts = {
         "departments": len(departments_df),
@@ -78,6 +81,7 @@ def run(
         "absences": len(absence_records),
         "trainings": len(transform_stage.TRAINING_CATALOG),
         "employee_trainings": len(enrollment_records),
+        "employee_feature_snapshots": len(feature_records),
     }
 
     if dry_run:
@@ -97,6 +101,9 @@ def run(
         training_ids = load_stage.load_training_catalog(target_session)
         load_stage.load_employee_trainings(
             target_session, enrollment_records, employee_number_to_id, training_ids
+        )
+        load_stage.load_employee_feature_snapshots(
+            target_session, feature_records, employee_number_to_id, computed_at=computed_at
         )
 
     if session is not None:

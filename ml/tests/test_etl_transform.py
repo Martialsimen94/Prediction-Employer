@@ -4,12 +4,14 @@ from decimal import Decimal
 
 import pandas as pd
 
+from ml.etl.features import FEATURE_COLUMNS
 from ml.etl.transform import (
     EDUCATION_LEVELS,
     assign_managers,
     build_departments,
     department_managers,
     to_absence_records,
+    to_employee_feature_records,
     to_employee_records,
     to_employee_training_records,
     to_performance_review_records,
@@ -135,6 +137,23 @@ def test_to_absence_records_count_scales_with_work_life_balance(
 
     # WorkLifeBalance=3 for every seed row here -> max(0, 4-3) = 1 absence each.
     assert len(absences) == len(employee_records) * 1
+
+
+def test_to_employee_feature_records_carries_every_feature_column_with_json_safe_types(
+    sample_raw_df: pd.DataFrame,
+) -> None:
+    with_managers = assign_managers(sample_raw_df)
+    employee_records = to_employee_records(with_managers, random_state=0)
+    features = to_employee_feature_records(sample_raw_df, employee_records)
+
+    assert list(features["source_employee_number"]) == list(
+        employee_records["source_employee_number"]
+    )
+    row = features[features["source_employee_number"] == 1].iloc[0]
+    for column in FEATURE_COLUMNS:
+        assert isinstance(row[column], float | str)
+    assert row["JobLevel"] == 4.0
+    assert row["Department"] == "Research & Development"
 
 
 def test_to_employee_training_records_count_matches_training_times_last_year(

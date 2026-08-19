@@ -74,9 +74,10 @@ poetry install --with dashboards
 
 ## Database
 
-The schema (21 tables — employees, departments, salaries, performance reviews,
+The schema (22 tables — employees, departments, salaries, performance reviews,
 promotions, absences, trainings, skills, auth/RBAC, ML predictions/recommendations,
-notifications, audit log, MLOps model registry & drift reports) is fully normalized,
+an employee feature snapshot store, notifications, audit log, MLOps model registry &
+drift reports) is fully normalized,
 constrained (CHECK/UNIQUE/FK with appropriate `ON DELETE` behavior) and indexed.
 Reporting views, audit/`updated_at` triggers and a turnover-rate stored function live
 in [`db/sql`](db/sql) and are applied by the second Alembic migration.
@@ -106,9 +107,11 @@ values, IQR outlier flagging), bootstrap+jitter-augments it up to an
 like OverTime+low JobSatisfaction -> Attrition survive), maps it onto our
 domain tables (with a JobLevel-based manager hierarchy per department),
 synthesizes plausible absences/training enrollments the source data doesn't
-contain, and bulk-loads everything into Postgres via SQLAlchemy Core
-(INSERT...RETURNING, not row-by-row ORM — ~5,000 employees plus ~20,000
-related rows load in about 2 seconds):
+contain, snapshots each employee's raw model-input feature vector into
+`employee_feature_snapshots` (the offline feature store the inference API
+below reads from), and bulk-loads everything into Postgres via SQLAlchemy
+Core (INSERT...RETURNING, not row-by-row ORM — ~5,000 employees plus
+~20,000 related rows load in about 2 seconds):
 
 ```bash
 PYTHONPATH=backend poetry run python -m ml.etl.pipeline --target-rows 5000
@@ -170,6 +173,35 @@ of concrete recommendations, in `ml/explainability/`:
   `attrition_predictions` / `recommendations` tables so Module 9's inference
   API can persist it directly.
 
+## ML Inference API
+
+`ml/inference/` bridges the trained model (Module 7) and the explanation
+engine (Module 8) into the live backend:
+
+- `model_loader.py` loads the pipeline currently under the MLflow registry's
+  `staging` alias and lazily mirrors it into the `ml_model_registry` table
+  (the FK every persisted prediction points at), so promoting a new model in
+  MLflow is all it takes for the next prediction to use it.
+- `features.py` reconstructs a model-ready row (or background sample) from
+  `employee_feature_snapshots` JSON blobs, coercing values back to the
+  dtypes the training pipeline's `ColumnTransformer` expects.
+
+`PredictionService` (`backend/app/services/prediction_service.py`) ties
+these into the REST API: scoring an employee fits (or reuses a
+process-cached) `ExplanationEngine`, then persists the resulting risk score,
+SHAP attribution and recommendations in one call.
+
+| Endpoint | Permission | Description |
+|---|---|---|
+| `POST /employees/{id}/predictions` | `predictions:write` | Score the employee from their latest feature snapshot; persists the prediction + recommendations |
+| `GET /employees/{id}/predictions` | `predictions:read` | Paginated prediction history for the employee |
+| `GET /predictions/{id}` | `predictions:read` | A single prediction with its recommendations |
+| `PATCH /recommendations/{id}` | `predictions:write` | Update a recommendation's status (`pending`/`in_progress`/`completed`/`dismissed`) |
+
+```bash
+PYTHONPATH=. poetry run uvicorn app.main:app --app-dir backend --reload
+```
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -182,7 +214,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **6. Data engineering — dataset generation & ETL pipeline** — real IBM HR Attrition seed data, Pandera validation, bootstrap+jitter synthetic augmentation, bulk load to Postgres
 - [x] **7. ML training, benchmarking & MLflow tracking** — 6 models, Optuna tuning, leakage-safe grouped CV, full metric suite, MLflow tracking + model registry
 - [x] **8. Explainability (SHAP/LIME) & recommendation engine** — per-prediction SHAP + LIME attribution, actionable-feature-driven recommendations excluding protected attributes
-- [ ] 9. ML inference API
+- [x] **9. ML inference API** — MLflow-backed model loading synced to the model registry table, an offline-feature-store-driven prediction/recommendation REST API
 - [ ] 10. MLOps — drift detection & automated retraining
 - [ ] 11. Dashboards (Streamlit/Dash)
 - [ ] 12. Frontend (React/TypeScript/Tailwind)

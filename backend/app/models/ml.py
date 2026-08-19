@@ -53,6 +53,29 @@ class MLModelRegistry(TimestampMixin, Base):
     promoted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class EmployeeFeatureSnapshot(TimestampMixin, Base):
+    """The raw model-input feature vector for one employee (see
+    `ml.etl.features.FEATURE_COLUMNS`), refreshed whenever the ETL pipeline
+    (Module 6) runs. Most of these columns have no other home in the
+    relational schema -- salary/performance/absence/training data is
+    normalized into its own domain tables, but fields like `JobLevel`,
+    `OverTime` or `EnvironmentSatisfaction` only ever existed in the source
+    HR dataset. This table is the offline feature store the inference API
+    (Module 9) reads from to reconstruct exactly what the model was trained
+    on, rather than trying to (lossily) re-derive it from operational data."""
+
+    __tablename__ = "employee_feature_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), unique=True
+    )
+    features: Mapped[dict[str, float | str]] = mapped_column(JSON, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    employee: Mapped["Employee"] = relationship("Employee")  # noqa: F821
+
+
 class AttritionPrediction(TimestampMixin, Base):
     __tablename__ = "attrition_predictions"
     __table_args__ = (

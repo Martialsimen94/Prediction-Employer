@@ -132,7 +132,7 @@ ignore_missing_imports = true
 minversion = "8.0"
 addopts = "-ra -q --cov=backend/app --cov=ml --cov-report=term-missing"
 testpaths = ["backend/tests", "ml/tests"]
-pythonpath = ["backend", "ml"]
+pythonpath = ["backend", "."]
 
 [tool.coverage.run]
 branch = true

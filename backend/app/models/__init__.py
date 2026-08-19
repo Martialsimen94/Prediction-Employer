@@ -14,6 +14,7 @@ from app.models.employee import Employee
 from app.models.ml import (
     AttritionPrediction,
     DataDriftReport,
+    EmployeeFeatureSnapshot,
     MLModelRegistry,
     Recommendation,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "DataDriftReport",
     "Department",
     "Employee",
+    "EmployeeFeatureSnapshot",
     "EmployeeSkill",
     "EmployeeTraining",
     "MLModelRegistry",

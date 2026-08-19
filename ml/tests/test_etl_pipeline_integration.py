@@ -62,7 +62,9 @@ def test_pipeline_loads_a_small_sample_end_to_end(
 ) -> None:
     from app.models.department import Department
     from app.models.employee import Employee
+    from app.models.ml import EmployeeFeatureSnapshot
     from app.models.salary import Salary
+    from ml.etl.features import FEATURE_COLUMNS
 
     counts = run(input_path=small_sample.path, target_rows=25, dry_run=False, session=db_session)
     db_session.flush()
@@ -87,3 +89,9 @@ def test_pipeline_loads_a_small_sample_end_to_end(
     # the department/employee FKs are real, resolved ids -- not leftover
     # source EmployeeNumbers or unresolved references.
     assert all(e.department_id in department_ids for e in employees)
+
+    snapshots = db_session.scalars(
+        select(EmployeeFeatureSnapshot).where(EmployeeFeatureSnapshot.employee_id.in_(employee_ids))
+    ).all()
+    assert len(snapshots) == counts["employee_feature_snapshots"] == counts["employees"]
+    assert set(snapshots[0].features) == set(FEATURE_COLUMNS)

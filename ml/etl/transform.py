@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 from faker import Faker
 
+from ml.etl.features import CATEGORICAL_FEATURES, FEATURE_COLUMNS, NUMERIC_FEATURES
+
 EDUCATION_LEVELS = {
     1: "Below College",
     2: "College",
@@ -110,6 +112,31 @@ def to_employee_records(df: pd.DataFrame, *, random_state: int | None = None) ->
         )
 
     return pd.DataFrame.from_records(records)
+
+
+def to_employee_feature_records(
+    augmented_df: pd.DataFrame, employee_records: pd.DataFrame
+) -> pd.DataFrame:
+    """One row per employee: `source_employee_number` plus every raw
+    FEATURE_COLUMNS value (see ml/etl/features.py) the attrition model was
+    trained on. Most of these columns (JobLevel, OverTime,
+    EnvironmentSatisfaction, ...) have no home in the normalized domain
+    tables above -- this is the offline feature store `load.py` writes to
+    `employee_feature_snapshots`, which Module 9's inference API reads back
+    to reconstruct exactly what the model expects for a given employee."""
+    features = augmented_df[FEATURE_COLUMNS].reset_index(drop=True).copy()
+    # Explicit native types so the JSON column round-trips cleanly: numpy.float64
+    # is a `float` subclass (json-safe as-is), but numpy.int64 is not, and
+    # bootstrap+jitter augmentation (ml/etl/synthetic.py) can leave numeric
+    # columns as either depending on the source dtype.
+    features[NUMERIC_FEATURES] = features[NUMERIC_FEATURES].astype(float)
+    features[CATEGORICAL_FEATURES] = features[CATEGORICAL_FEATURES].astype(str)
+    features.insert(
+        0,
+        "source_employee_number",
+        employee_records["source_employee_number"].reset_index(drop=True),
+    )
+    return features
 
 
 def to_salary_records(employee_records: pd.DataFrame) -> pd.DataFrame:
