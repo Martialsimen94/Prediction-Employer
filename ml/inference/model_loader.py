@@ -1,14 +1,22 @@
 """Loads the current attrition-classifier pipeline from the MLflow model
-registry (Module 7's `ml.training.train`, which registers the best run
-under a `staging` alias) and keeps the backend's `ml_model_registry` table
-— the FK target `attrition_predictions.model_registry_id` points at — in
-sync with whichever MLflow version is actually being served."""
+registry and keeps the backend's `ml_model_registry` table — the FK target
+`attrition_predictions.model_registry_id` points at — in sync with
+whichever MLflow version is actually being served.
+
+Module 7's `ml.training.train` always registers its best run under a
+`staging` alias; Module 10's automated retraining (`ml.monitoring.retrain`)
+promotes a `production` alias only once a retrain has actually beaten
+whatever came before. Preferring `production` and falling back to
+`staging` means inference always serves the best-known model, including
+before that first successful promotion has ever happened."""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import mlflow
 import mlflow.sklearn
+from mlflow.entities.model_registry import ModelVersion
+from mlflow.exceptions import MlflowException
 from sklearn.pipeline import Pipeline
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.models.ml import MLModelRegistry
 from ml.training.mlflow_utils import REGISTERED_MODEL_NAME, configure_mlflow
 
-DEFAULT_ALIAS = "staging"
+ALIAS_PREFERENCE = ("production", "staging")
 
 
 @dataclass(frozen=True)
@@ -28,14 +36,27 @@ class LoadedModel:
     metrics: dict[str, float]
 
 
-def load_pipeline(alias: str = DEFAULT_ALIAS) -> LoadedModel:
-    """Raises `mlflow.exceptions.MlflowException` if no model carries
-    `alias` yet — i.e. `ml.training.train` hasn't been run."""
+def _resolve_alias(client: mlflow.MlflowClient, alias: str | None) -> tuple[str, ModelVersion]:
+    aliases = (alias,) if alias else ALIAS_PREFERENCE
+    for candidate in aliases:
+        try:
+            return candidate, client.get_model_version_by_alias(REGISTERED_MODEL_NAME, candidate)
+        except MlflowException:
+            continue
+    raise LookupError(
+        f"No model version registered under any of {aliases!r} for {REGISTERED_MODEL_NAME!r} "
+        "-- has ml.training.train ever been run?"
+    )
+
+
+def load_pipeline(alias: str | None = None) -> LoadedModel:
+    """`alias` pins a specific MLflow alias (mainly for tests); by default,
+    tries `ALIAS_PREFERENCE` in order and serves the first one that exists."""
     configure_mlflow()
     client = mlflow.MlflowClient()
-    model_version = client.get_model_version_by_alias(REGISTERED_MODEL_NAME, alias)
+    resolved_alias, model_version = _resolve_alias(client, alias)
     run = client.get_run(model_version.run_id)
-    pipeline = mlflow.sklearn.load_model(f"models:/{REGISTERED_MODEL_NAME}@{alias}")
+    pipeline = mlflow.sklearn.load_model(f"models:/{REGISTERED_MODEL_NAME}@{resolved_alias}")
     return LoadedModel(
         pipeline=pipeline,
         run_id=model_version.run_id,

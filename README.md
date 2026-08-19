@@ -202,6 +202,39 @@ SHAP attribution and recommendations in one call.
 PYTHONPATH=. poetry run uvicorn app.main:app --app-dir backend --reload
 ```
 
+## MLOps: drift detection & retraining
+
+`ml/monitoring/` compares two `employee_feature_snapshots` periods — the
+oldest ETL batch on record as the reference distribution, the most recent
+one as current — one check per feature:
+
+- `drift.py` — a Kolmogorov-Smirnov two-sample test for numeric features,
+  a Population Stability Index (PSI) for categorical ones; each yields a
+  `drift_score` and a `drift_detected` flag against a conventional
+  threshold (KS p < 0.05, PSI > 0.25).
+- `reports.py` — persists one `data_drift_reports` row per feature per
+  check.
+- `retrain.py` — if enough features have drifted (3 by default), reruns
+  the full training pipeline (Module 7) and promotes the result to a new
+  `production` MLflow alias — but only if it beats whatever's currently
+  serving (`production` if anything's ever been promoted, `staging`
+  otherwise), so a bad retrain can never silently regress predictions.
+  The inference API (Module 9) prefers `production` and falls back to
+  `staging`.
+
+A Celery Beat schedule runs the check nightly (`app/core/celery_app.py`);
+`POST /drift-reports/check` triggers it on demand:
+
+| Endpoint | Permission | Description |
+|---|---|---|
+| `GET /drift-reports` | `predictions:read` | Paginated drift reports, filterable by `feature_name` / `drift_detected` |
+| `POST /drift-reports/check` | `predictions:write` | Enqueue an async drift check (and a possible retrain + promotion) |
+
+```bash
+cd backend
+PYTHONPATH=..:. poetry run celery -A app.core.celery_app worker --beat --loglevel=info
+```
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -215,7 +248,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **7. ML training, benchmarking & MLflow tracking** — 6 models, Optuna tuning, leakage-safe grouped CV, full metric suite, MLflow tracking + model registry
 - [x] **8. Explainability (SHAP/LIME) & recommendation engine** — per-prediction SHAP + LIME attribution, actionable-feature-driven recommendations excluding protected attributes
 - [x] **9. ML inference API** — MLflow-backed model loading synced to the model registry table, an offline-feature-store-driven prediction/recommendation REST API
-- [ ] 10. MLOps — drift detection & automated retraining
+- [x] **10. MLOps — drift detection & automated retraining** — KS-test/PSI drift checks between feature-snapshot periods, threshold-triggered retraining with a beats-production promotion gate, nightly Celery Beat schedule
 - [ ] 11. Dashboards (Streamlit/Dash)
 - [ ] 12. Frontend (React/TypeScript/Tailwind)
 - [ ] 13. Full Docker Compose stack & complete CI/CD
