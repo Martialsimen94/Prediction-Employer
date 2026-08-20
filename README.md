@@ -2,7 +2,7 @@
 
 An end-to-end platform that predicts employee attrition risk, explains each prediction (SHAP/LIME), and recommends concrete retention actions — built with production-grade practices (Clean Architecture, Repository/Service layers, typed code, tested pipelines, MLOps).
 
-> **Status:** under active development, built module by module. See [Roadmap](#roadmap) for progress.
+> **Status:** feature-complete — all 14 planned modules shipped, built one at a time. See [Roadmap](#roadmap) for what each one delivered, and [Documentation](#documentation) for diagrams and guides.
 
 ## What this project is
 
@@ -28,7 +28,7 @@ HR teams typically learn an employee is at flight risk only after they resign. T
 
 ## Architecture
 
-Clean Architecture with a Repository Pattern + Service Layer on the backend (`backend/app/{repositories,services,api}`), a decoupled ML pipeline (`ml/{etl,training,explainability,monitoring}`) tracked in MLflow, and independent dashboard/frontend clients consuming the same versioned REST API. See [`docs/architecture`](docs/architecture) for diagrams (system architecture, ERD, UML) as they are added.
+Clean Architecture with a Repository Pattern + Service Layer on the backend (`backend/app/{repositories,services,api}`), a decoupled ML pipeline (`ml/{etl,training,explainability,monitoring}`) tracked in MLflow, and independent dashboard/frontend clients consuming the same versioned REST API. See [Documentation](#documentation) below for diagrams (system architecture, ERD, ML pipeline) and guides.
 
 ```
 backend/    FastAPI application (API, domain, repositories, services, ML inference)
@@ -333,6 +333,17 @@ validate the Dockerfiles themselves, and pushes them to GHCR
 `main`, using the workflow's own `GITHUB_TOKEN` — no registry secrets to
 configure.
 
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`docs/architecture/system-architecture.md`](docs/architecture/system-architecture.md) | Every service in the Compose stack, how they talk to each other, and three concrete request paths through the system |
+| [`docs/architecture/erd.md`](docs/architecture/erd.md) | Entity-relationship diagrams for all 22 tables, split into the HR/auth domain and the ML/MLOps domain |
+| [`docs/architecture/ml-pipeline.md`](docs/architecture/ml-pipeline.md) | Data → training → inference → drift/retrain, and *why* it's shaped that way (lineage-grouped splits, the offline feature store, the promotion gate) |
+| [`docs/technical/api-reference.md`](docs/technical/api-reference.md) | Every REST endpoint, grouped by resource, with the permission each one requires |
+| [`docs/technical/architecture-decisions.md`](docs/technical/architecture-decisions.md) | The notable engineering decisions made while building this, each as Decision / Why / Trade-off |
+| [`docs/user/user-guide.md`](docs/user/user-guide.md) | What each of the 6 roles can see and do, and where (the app vs. the dashboards) |
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -350,7 +361,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **11. Dashboards (Streamlit/Dash)** — HR/Manager (Streamlit) and Executive/Data Scientist (Dash) views, reporting REST endpoints backed by Module 2's SQL views, a new `executive` role
 - [x] **12. Frontend (React/TypeScript/Tailwind)** — Employees/Departments/Notifications SPA consuming the REST API, JWT auth, role-gated UI, Vitest + Testing Library, oxlint/Prettier, a frontend CI job
 - [x] **13. Full Docker Compose stack & complete CI/CD** — Dockerfiles for backend/celery, dashboards, mlflow and frontend; a `migrate` init service; a GHCR-publishing CI job
-- [ ] 14. Final documentation (architecture diagrams, technical & user guides)
+- [x] **14. Final documentation** — system architecture, ERD and ML pipeline diagrams; an API reference and an architecture-decisions record; a per-role user guide (see [Documentation](#documentation))
 
 ## License
 
