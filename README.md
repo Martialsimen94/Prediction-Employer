@@ -42,7 +42,7 @@ docs/       Architecture, technical and user documentation
 
 ## Getting started (development)
 
-Prerequisites: [Poetry](https://python-poetry.org/) 2.x, Python 3.12, [pnpm](https://pnpm.io/), Docker (for Postgres/Redis and, later, the full stack).
+Prerequisites: [Poetry](https://python-poetry.org/) 2.x, Python 3.12, [pnpm](https://pnpm.io/), Docker (for Postgres/Redis locally, or the [full stack](#full-stack-docker-compose)).
 
 ```bash
 # 1. Install Python dependencies (base + dev tooling)
@@ -296,6 +296,43 @@ pnpm test                # Vitest + Testing Library
 pnpm build               # tsc -b && vite build
 ```
 
+## Full stack (Docker Compose)
+
+Everything above — Postgres, Redis, an MLflow tracking server, the backend
+API, a combined Celery worker+beat, both dashboards, and the frontend — as
+one Compose stack, each service built from its own `Dockerfile` (repo
+root as build context, since backend/ml/dashboards cross-import each other
+or read `db/sql/*.sql`; see each Dockerfile's header comment):
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+| Service | Port | Notes |
+|---|---|---|
+| `frontend` | [:8080](http://localhost:8080) | nginx serving the built SPA |
+| `backend` | [:8000](http://localhost:8000) | FastAPI; `migrate` runs `alembic upgrade head` first and must exit 0 |
+| `streamlit` / `dash` | [:8501](http://localhost:8501) / [:8050](http://localhost:8050) | talk to `backend` over the Docker network, not `localhost` |
+| `mlflow` | [:5000](http://localhost:5000) | tracking server + registry; `backend`/`celery` point at it via `MLFLOW_TRACKING_URI` |
+| `celery` | — | worker + beat (the nightly drift check from the MLOps section) |
+| `postgres` / `redis` | :5432 / :6379 | |
+
+First run only, once `backend` reports healthy — the ETL pipeline and a
+training run aren't part of automatic startup (they're one-off maintenance
+commands, same as running them locally):
+
+```bash
+docker compose -f docker/docker-compose.yml exec backend python -m ml.etl.download_seed_dataset
+docker compose -f docker/docker-compose.yml exec backend python -m ml.etl.pipeline --target-rows 5000
+docker compose -f docker/docker-compose.yml exec backend python -m ml.training.train --quick
+```
+
+CI (`.github/workflows/ci.yml`) builds all four images on every push/PR to
+validate the Dockerfiles themselves, and pushes them to GHCR
+(`ghcr.io/<owner>/<repo>-{backend,dashboards,mlflow,frontend}`) on pushes to
+`main`, using the workflow's own `GITHUB_TOKEN` — no registry secrets to
+configure.
+
 ## Roadmap
 
 The platform is built and tested module by module (see the project plan for full detail):
@@ -312,7 +349,7 @@ The platform is built and tested module by module (see the project plan for full
 - [x] **10. MLOps — drift detection & automated retraining** — KS-test/PSI drift checks between feature-snapshot periods, threshold-triggered retraining with a beats-production promotion gate, nightly Celery Beat schedule
 - [x] **11. Dashboards (Streamlit/Dash)** — HR/Manager (Streamlit) and Executive/Data Scientist (Dash) views, reporting REST endpoints backed by Module 2's SQL views, a new `executive` role
 - [x] **12. Frontend (React/TypeScript/Tailwind)** — Employees/Departments/Notifications SPA consuming the REST API, JWT auth, role-gated UI, Vitest + Testing Library, oxlint/Prettier, a frontend CI job
-- [ ] 13. Full Docker Compose stack & complete CI/CD
+- [x] **13. Full Docker Compose stack & complete CI/CD** — Dockerfiles for backend/celery, dashboards, mlflow and frontend; a `migrate` init service; a GHCR-publishing CI job
 - [ ] 14. Final documentation (architecture diagrams, technical & user guides)
 
 ## License

@@ -7,6 +7,7 @@ per-user server session.
     PYTHONPATH=dashboards poetry run python dashboards/dash_app/app.py
 """
 
+import os
 from typing import Any
 
 import dash
@@ -276,4 +277,11 @@ def _trigger_drift_check(n_clicks: int | None, data: dict[str, Any] | None) -> A
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Dash's default host (127.0.0.1) is loopback-only, unreachable from
+    # outside a container -- Docker Compose (docker/docker-compose.yml)
+    # sets DASH_HOST=0.0.0.0 and DASH_DEBUG=false for the containerized run.
+    app.run(
+        host=os.environ.get("DASH_HOST", "127.0.0.1"),
+        port=int(os.environ.get("DASH_PORT", "8050")),
+        debug=os.environ.get("DASH_DEBUG", "true").lower() == "true",
+    )

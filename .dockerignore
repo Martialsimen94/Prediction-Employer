@@ -1,0 +1,43 @@
+# Every Docker build in this repo uses the repo root as its context (see
+# docker/docker-compose.yml) -- this keeps that context from dragging in
+# local caches, dependency trees Docker reinstalls anyway, and secrets.
+
+.git/
+.github/
+
+**/__pycache__/
+**/*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+**/node_modules/
+frontend/dist/
+
+mlruns/
+mlartifacts/
+mlruns.db
+ml/data/raw/
+ml/data/processed/
+catboost_info/
+*.pkl
+*.joblib
+
+*.db
+*.sqlite3
+pgdata/
+
+.env
+.env.*
+!.env.example
+
+.vscode/
+.idea/
+.DS_Store
+*.log
+logs/
+
+docs/

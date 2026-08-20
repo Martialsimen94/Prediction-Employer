@@ -1,6 +1,20 @@
-# Development stack skeleton — Module 1 (Fondations).
-# Services (API, worker, MLflow, dashboards, frontend) are added in later modules
-# as their code is implemented, per the project roadmap.
+# Full development stack (Module 13). Every Python image is built from the
+# repo root as its context (`context: ..` below) because backend/ml/dashboards
+# cross-import each other and/or need db/sql/*.sql -- see each Dockerfile's
+# own header comment for exactly why.
+#
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# First run only, once postgres/backend are healthy:
+#   docker compose -f docker/docker-compose.yml exec backend \
+#     python -m ml.etl.download_seed_dataset
+#   docker compose -f docker/docker-compose.yml exec backend \
+#     python -m ml.etl.pipeline --target-rows 5000
+#   docker compose -f docker/docker-compose.yml exec backend \
+#     python -m ml.training.train --quick
+#
+# Services: backend :8000, mlflow :5000, streamlit :8501, dash :8050,
+# frontend :8080, postgres :5432, redis :6379.
 
 services:
   postgres:
@@ -33,5 +47,128 @@ services:
       timeout: 5s
       retries: 10
 
+  mlflow:
+    build:
+      context: ..
+      dockerfile: docker/mlflow/Dockerfile
+    container_name: retention_mlflow
+    restart: unless-stopped
+    command:
+      - "--backend-store-uri"
+      - "sqlite:////mlflow/mlruns.db"
+      - "--default-artifact-root"
+      - "/mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    working_dir: /app/backend
+    command: alembic upgrade head
+    environment:
+      POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-retention_platform}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: retention_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-retention_platform}
+      REDIS_DSN: redis://redis:6379/0
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-changeme-generate-a-long-random-secret}
+      CORS_ALLOWED_ORIGINS: '["http://localhost:8080", "http://localhost:5173"]'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: retention_celery
+    restart: unless-stopped
+    # Worker + beat combined in one process (see README's MLOps section) --
+    # fine at this scale; a real production deploy would split them so a
+    # worker restart can't also drop the beat schedule.
+    command: celery -A app.core.celery_app worker --beat --loglevel=info
+    working_dir: /app/backend
+    environment:
+      POSTGRES_DSN: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-retention_platform}
+      REDIS_DSN: redis://redis:6379/0
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-changeme-generate-a-long-random-secret}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+
+  streamlit:
+    build:
+      context: ..
+      dockerfile: dashboards/Dockerfile
+    container_name: retention_streamlit
+    restart: unless-stopped
+    command: streamlit run dashboards/streamlit_app/app.py --server.address=0.0.0.0 --server.port=8501
+    ports:
+      - "8501:8501"
+    environment:
+      RETENTION_API_BASE_URL: http://backend:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  dash:
+    build:
+      context: ..
+      dockerfile: dashboards/Dockerfile
+    container_name: retention_dash
+    restart: unless-stopped
+    command: python dashboards/dash_app/app.py
+    ports:
+      - "8050:8050"
+    environment:
+      RETENTION_API_BASE_URL: http://backend:8000/api/v1
+      DASH_HOST: 0.0.0.0
+      DASH_PORT: "8050"
+      DASH_DEBUG: "false"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    container_name: retention_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  mlflow_data:
